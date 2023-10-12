@@ -10,7 +10,7 @@ public class Movie
     public string Director { get; set; }
     public string Description { get; set; }
 
-    public Movie()  {  } // Empty constructor for EF. (warning disable: CS8618)
+    public Movie() { } // Empty constructor for EF. (warning disable: CS8618)
 
     public Movie(string title, DateOnly year, string director, string description)
     {
@@ -20,3 +20,10 @@ public class Movie
         Description = description;
     }
 }
+
+public record MovieRecord(
+    string Title,
+    DateOnly Year,
+    string Director,
+    string Description
+);
