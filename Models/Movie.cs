@@ -20,11 +20,3 @@ public class Movie
         Description = description;
     }
 }
-
-public record MovieRecord
-(
-    string Title,
-    DateOnly Year,
-    string Director,
-    string Description
-);
