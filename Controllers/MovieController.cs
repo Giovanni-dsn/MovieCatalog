@@ -1,61 +1,80 @@
 using Microsoft.AspNetCore.Mvc;
 using MovieCatalog.Data;
+using MovieCatalog.Dto;
 using MovieCatalog.Models;
+using MovieCatalog.Utils;
 
 [ApiController]
 [Route("[Controller]")]
 public class MovieController : ControllerBase
 {
-    [HttpGet] // I created the endpoint just to test the others
-    [Route("{id}")]
-    public IResult Get([FromRoute] int id, [FromServices] AppDbContext context)
+    private readonly AppDbContext _dbContext;
+
+    public MovieController(AppDbContext dbContext)
     {
-        var movieDb = context.Movies.FirstOrDefault(x => x.Id == id);
-        if (movieDb != null) return Results.Ok(movieDb);
-        return Results.NotFound();
+        _dbContext = dbContext;
     }
+
+    [HttpGet]
+    public IActionResult GetAll()
+    {
+        List<Movie> movies = _dbContext.Movies.ToList();
+
+        return Ok(movies);
+    }
+
+    [HttpGet("{id}")]
+    public IActionResult GetById(int id)
+    {
+        Movie? movie = _dbContext.Movies.FirstOrDefault(x => x.Id == id);
+
+        if (movie == null)
+            return NotFound();
+
+        return Ok(movie);
+    }
+
     [HttpPost]
-    public IResult Post([FromBody] MovieRecord request, [FromServices] AppDbContext context)
+    public IActionResult Create(MovieDto request)
     {
-        MovieValidation validation = new(request.Title, request.Year, request.Director, request.Description);
-        if (validation.IsValid)
-        {
-            Movie movie = MovieValidation.TransferToMovie(validation, new Movie());
-            context.Movies.Add(movie);
-            context.SaveChanges();
-            return Results.Created($"[Controller]/{movie.Id}", movie);
-        }
-        return Results.BadRequest(validation.Notifications); //Return BadRequest and "Error Message"
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        Movie movie = new Movie(request.Title, request.Year, request.Director, request.Description);
+
+        _dbContext.Movies.Add(movie);
+        _dbContext.SaveChanges();
+
+        return StatusCode(201, movie);
     }
 
-    [HttpPut]
-    [Route("{id}")]
-    public IResult Put([FromRoute] int id, [FromServices] AppDbContext context, [FromBody] MovieRecord request)
+    [HttpPut("{id}")]
+    public IActionResult Update(int id, MovieDto request)
     {
-        var movieDb = context.Movies.FirstOrDefault(x => x.Id == id);
-        MovieValidation validation = new(request.Title, request.Year, request.Director, request.Description);
-        if (movieDb != null && validation.IsValid)
-        {
-            movieDb = MovieValidation.TransferToMovie(validation, movieDb);
-            context.Movies.Update(movieDb);
-            context.SaveChanges();
-        }
-        return !validation.IsValid
-               ? Results.BadRequest(validation.Notifications)
-               : Results.NotFound();
+        Movie existingMovie = _dbContext.Movies.First(x => x.Id == id);
+
+        if (existingMovie == null)
+            return NotFound();
+
+        DtoMapper.MapDtoToModel(request, existingMovie);
+
+        _dbContext.Movies.Update(existingMovie);
+        _dbContext.SaveChanges();
+
+        return NoContent();
     }
 
-    [HttpDelete]
-    [Route("{id}")]
-    public IResult Delete([FromRoute] int id, [FromServices] AppDbContext context)
+    [HttpDelete("{id}")]
+    public IActionResult Delete(int id)
     {
-        var movieDb = context.Movies.FirstOrDefault(x => x.Id == id);
-        if (movieDb != null)
+        Movie? movie = _dbContext.Movies.FirstOrDefault(x => x.Id == id);
+        if (movie != null)
         {
-            context.Movies.Remove(movieDb);
-            context.SaveChanges();
-            return Results.Ok("Successfully deleted");
+            _dbContext.Movies.Remove(movie);
+            _dbContext.SaveChanges();
+
+            return NoContent();
         }
-        return Results.NotFound();
+        return NotFound();
     }
 }

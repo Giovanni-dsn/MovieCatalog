@@ -21,7 +21,8 @@ public class Movie
     }
 }
 
-public record MovieRecord(
+public record MovieRecord
+(
     string Title,
     DateOnly Year,
     string Director,
